@@ -43,7 +43,7 @@ module.exports = function(grunt) {
       release(this, pkg, version, mode);
     }
   });
-  
+
   function fpackage(task, pkg) {
     var options = task.options({
       artifactId: pkg.name,
@@ -76,9 +76,10 @@ module.exports = function(grunt) {
   function deploy(task, pkg) {
     var options = task.options({
       artifactId: pkg.name,
-      version: pkg.version,
+      version: pkg.version + '-SNAPSHOT',
       packaging: pkg.packaging
     });
+
 
     guaranteeFileName(options);
     configureDestination(options, task);
@@ -103,17 +104,20 @@ module.exports = function(grunt) {
     }
 
     options.mode = mode || options.mode;
-    options.version = version || pkg.version.substr(0, pkg.version.length - '-SNAPSHOT'.length);
+    options.version = version || pkg.version;
 
     if (options.nextVersion === 'null-SNAPSHOT') {
       grunt.fail.fatal('Failed to determine next development version ' +
         'based on version (' + options.version.cyan +
         ') and mode (' + options.mode.cyan + ')');
     }
-    options.nextVersion = semver.inc(options.version, options.mode) + '-SNAPSHOT';
-    if (options.nextVersion === 'null-SNAPSHOT') {
+
+    var oldVersion = options.version
+
+    options.version = semver.inc(options.version, options.mode);
+    if (options.version === 'null-SNAPSHOT') {
       grunt.fail.fatal('Failed to determine next development version ' +
-        'based on version (' + options.version.cyan +
+        'based on version (' + options.oldVersion.cyan +
         ') and mode (' + options.mode.cyan + ')');
     }
 
@@ -121,11 +125,12 @@ module.exports = function(grunt) {
     configureDestination(options, task);
     configureMaven(options, task);
 
+    console.log('options', options)
+
     grunt.task.run(
       'maven:version:' + options.version,
       'mvn:package',
-      'maven:deploy-file',
-      'maven:version:' + options.nextVersion + ':deleteTag'
+      'maven:deploy-file'
     );
 
     if (options.gitpush) {
@@ -133,10 +138,10 @@ module.exports = function(grunt) {
         'maven:gitpush'
       );
     }
-    
+
     if (options.gitpushtag) {
       grunt.task.run(
-        'maven:gitpushtag:v' + options.version
+        'maven:gitpushtag:' + options.version
       );
     }
   }
@@ -161,7 +166,7 @@ module.exports = function(grunt) {
   }
 
   function configureMaven(options, task) {
-    
+
     options.packaging = getExtension(options.packaging, options.classifier, options.type);
 
     grunt.config.set('maven.package.options', { archive: options.file, mode: 'zip', extension: options.packaging });
@@ -256,16 +261,17 @@ module.exports = function(grunt) {
     var msg = 'Deploying to maven...';
     grunt.verbose.write(msg);
     grunt.log.debug('Running command "mvn ' + args.join(' ') + '"');
-    grunt.util.spawn({ cmd: 'mvn', args: args, opts: {stdio: 'inherit'} }, function(err, result, code) {
-      if (err) {
-        grunt.verbose.or.write(msg);
-        grunt.log.error().error('Failed to deploy to maven');
-      } else {
-        grunt.verbose.ok();
-        grunt.log.writeln('Deployed ' + options.file.cyan + ' to ' + options.url.cyan);
-      }
-      done(err);
-    });
+    // TODO uncomment
+    //grunt.util.spawn({ cmd: 'mvn', args: args, opts: {stdio: 'inherit'} }, function(err, result, code) {
+      //if (err) {
+        //grunt.verbose.or.write(msg);
+        //grunt.log.error().error('Failed to deploy to maven');
+      //} else {
+        //grunt.verbose.ok();
+        //grunt.log.writeln('Deployed ' + options.file.cyan + ' to ' + options.url.cyan);
+      //}
+      //done(err);
+    //});
   });
 
   grunt.registerTask('maven:version', 'Bumps version', function(version, deleteTag) {
@@ -276,6 +282,7 @@ module.exports = function(grunt) {
     var msg = 'Bumping version to ' + version.cyan + '...';
     grunt.verbose.write(msg);
 
+    console.log("maven version ", version)
     grunt.util.spawn({ cmd: 'npm', args: ['version', version, '-m', commitPrefix + '%s'] }, function(err, result, code) {
       if (err) {
         grunt.verbose.or.write(msg);
@@ -294,14 +301,14 @@ module.exports = function(grunt) {
         if (!isGit) { return done(); }
         msg = 'Deleting tag v' + version.cyan + '...';
         grunt.verbose.write(msg);
-        grunt.util.spawn({ cmd: 'git', args: ['tag', '-d', 'v' + version] }, function(err, result, code) {
+        grunt.util.spawn({ cmd: 'git', args: ['tag', '-d', version] }, function(err, result, code) {
           if (err) {
             grunt.verbose.or.write(msg);
-            grunt.log.error().error('Failed to delete tag ' + ('v' + version).cyan);
+            grunt.log.error().error('Failed to delete tag ' + (version).cyan);
           }
 
           grunt.verbose.ok();
-          grunt.log.writeln('Deleted tag ' + ('v' + version).cyan);
+          grunt.log.writeln('Deleted tag ' + (version).cyan);
 
           done(err);
         });
@@ -323,7 +330,7 @@ module.exports = function(grunt) {
       done(err);
     });
   });
-  
+
   grunt.registerTask('maven:gitpushtag', 'Pushes tag to git', function(tag) {
     var done = this.async();
 
@@ -357,7 +364,7 @@ module.exports = function(grunt) {
       fn(err);
     });
   }
-  
+
   function isValidMode(mode) {
     var validModes = ['major', 'minor', 'patch', 'build'].join('|');
 

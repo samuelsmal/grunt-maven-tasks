@@ -27,7 +27,7 @@ If no goal is specified, the goal will be set to the target name. This means tha
 
 _Run the `grunt package` task with the `goal` option set to `package`._
 
-This tasks packages an artifact.
+This tasks packages an artifact with the current version suffixed with `-SNAPSHOT`.
 
 ### install
 
@@ -40,6 +40,8 @@ This tasks packages and installs an artifact to your local maven repository.
 _Run the `grunt maven` task with the `goal` option set to `deploy`._
 
 This tasks packages and deploys an artifact to a maven repository.
+
+The artifacts version 
 
 ### release task
 
