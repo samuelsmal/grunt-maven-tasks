@@ -125,8 +125,6 @@ module.exports = function(grunt) {
     configureDestination(options, task);
     configureMaven(options, task);
 
-    console.log('options', options)
-
     grunt.task.run(
       'maven:version:' + options.version,
       'mvn:package',
@@ -261,28 +259,25 @@ module.exports = function(grunt) {
     var msg = 'Deploying to maven...';
     grunt.verbose.write(msg);
     grunt.log.debug('Running command "mvn ' + args.join(' ') + '"');
-    // TODO uncomment
-    //grunt.util.spawn({ cmd: 'mvn', args: args, opts: {stdio: 'inherit'} }, function(err, result, code) {
-      //if (err) {
-        //grunt.verbose.or.write(msg);
-        //grunt.log.error().error('Failed to deploy to maven');
-      //} else {
-        //grunt.verbose.ok();
-        //grunt.log.writeln('Deployed ' + options.file.cyan + ' to ' + options.url.cyan);
-      //}
-      //done(err);
-    //});
+    grunt.util.spawn({ cmd: 'mvn', args: args, opts: {stdio: 'inherit'} }, function(err, result, code) {
+      if (err) {
+        grunt.verbose.or.write(msg);
+        grunt.log.error().error('Failed to deploy to maven');
+      } else {
+        grunt.verbose.ok();
+        grunt.log.writeln('Deployed ' + options.file.cyan + ' to ' + options.url.cyan);
+      }
+      done(err);
+    });
   });
 
   grunt.registerTask('maven:version', 'Bumps version', function(version, deleteTag) {
     var done = this.async();
     var commitPrefix = grunt.config('grunt.maven.commitPrefix') || '';
 
-
     var msg = 'Bumping version to ' + version.cyan + '...';
     grunt.verbose.write(msg);
 
-    console.log("maven version ", version)
     grunt.util.spawn({ cmd: 'npm', args: ['version', version, '-m', commitPrefix + '%s'] }, function(err, result, code) {
       if (err) {
         grunt.verbose.or.write(msg);
